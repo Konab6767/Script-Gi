@@ -1,63 +1,65 @@
-// Genshin Impact Camera Position Reader
-// Offsets source: offsets.js (update there, then copy here)
+console.log("[*] Script Cm.js iniciado!");
 
-send("Starting Genshin camera position reader...");
+const il2cpp_base = Process.findModuleByName("GenshinImpact.exe").base;
+console.log("[+] Base do módulo GenshinImpact.exe: " + il2cpp_base);
 
-var moduleBase = Process.enumerateModules()[0].base;
-var Offsets = {
-    base: moduleBase,
-    Camera: { getMain: 0x17d51230 },
-    Transform: { getTransform: 0x17d61570, getPosition: 0x17d5b010 },
-    getAddress: function(o) { return this.base.add(o); },
-    createFunction: function(o, r, a) { return new NativeFunction(this.getAddress(o), r, a); }
-};
+// RVAs do dumpAtual.cs
+const RVA_get_main = 0x18f98ba0;
+const RVA_get_transform = 0x18fa8f10;
+const RVA_INTERNAL_get_position = 0x18fa29c0; // RVA correto do UnityEngine.Transform
 
-send("Using main module base: " + Offsets.base);
+// Obter os endereços das funções
+const get_main = new NativeFunction(il2cpp_base.add(RVA_get_main), 'pointer', []);
+const get_transform = new NativeFunction(il2cpp_base.add(RVA_get_transform), 'pointer', ['pointer']);
+const INTERNAL_get_position = new NativeFunction(il2cpp_base.add(RVA_INTERNAL_get_position), 'void', ['pointer', 'pointer']);
 
-// Define function pointers using centralized offsets
-var getMainCamera = Offsets.createFunction(Offsets.Camera.getMain, 'pointer', []);
-var getTransform = Offsets.createFunction(Offsets.Transform.getTransform, 'pointer', ['pointer']);
-var internalGetPosition = Offsets.createFunction(Offsets.Transform.getPosition, 'void', ['pointer', 'pointer']);
+console.log("[+] Função get_main() em: " + il2cpp_base.add(RVA_get_main));
+console.log("[+] Função get_transform() em: " + il2cpp_base.add(RVA_get_transform));
+console.log("[+] Função INTERNAL_get_position() em: " + il2cpp_base.add(RVA_INTERNAL_get_position));
 
-send("Function pointers set up successfully!");
-
-// Allocate memory for Vector3 (3 floats = 12 bytes)
-var vec3Buffer = Memory.alloc(12);
-
-// Poll camera position every 500ms!
-setInterval(function() {
+// Tentar obter a câmera principal
+function checkCamera() {
     try {
-        var mainCamera = getMainCamera();
-        if (mainCamera.isNull()) {
-            send("Main camera is null!");
+        console.log("\n[*] Tentando obter Camera.get_main()...");
+        const camera = get_main();
+        
+        if (camera.isNull()) {
+            console.log("[-] Camera.get_main() retornou NULL!");
             return;
         }
-        // send("Got main camera: " + mainCamera);
         
-        var transform = getTransform(mainCamera);
+        console.log("[+] Camera.get_main() retornou: " + camera);
+        
+        // Obter Transform da câmera
+        const transform = get_transform(camera);
         if (transform.isNull()) {
-            send("Transform is null!");
+            console.log("[-] Transform.get_transform() retornou NULL!");
             return;
         }
-        // send("Got transform: " + transform);
+        console.log("[+] Transform.get_transform() retornou: " + transform);
         
-        // Call INTERNAL_get_position
-        internalGetPosition(transform, vec3Buffer);
+        // Alocar memória para receber o Vector3 (12 bytes = 3 floats)
+        const positionBuffer = Memory.alloc(12);
         
-        // Read the 3 floats from the buffer
-        var x = vec3Buffer.readFloat();
-        var y = vec3Buffer.add(4).readFloat();
-        var z = vec3Buffer.add(8).readFloat();
+        // Chamar INTERNAL_get_position
+        INTERNAL_get_position(transform, positionBuffer);
         
-        // Check if values are reasonable
-        if (!isNaN(x) && !isNaN(y) && !isNaN(z) && 
-            isFinite(x) && isFinite(y) && isFinite(z)) {
-            send("Camera Position - X: " + x.toFixed(3) + " Y: " + y.toFixed(3) + " Z: " + z.toFixed(3));
-        }
+        // Ler os floats do buffer
+        const x = positionBuffer.readFloat();
+        const y = positionBuffer.add(4).readFloat();
+        const z = positionBuffer.add(8).readFloat();
         
-    } catch(e) {
-        send("Polling error: " + e);
+        console.log("[+] Posição da câmera (Float):");
+        console.log("    X: " + x);
+        console.log("    Y: " + y);
+        console.log("    Z: " + z);
+        
+    } catch (e) {
+        console.log("[-] Erro: " + e);
     }
-}, 500); // 500ms interval
+}
 
-send("Script loaded successfully - Reading camera position every 0.5 seconds!");
+checkCamera();
+
+// Verificar a cada 2 segundos
+setInterval(checkCamera, 2000);
