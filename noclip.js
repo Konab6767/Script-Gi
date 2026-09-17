@@ -7,8 +7,8 @@ var moduleBase = Process.enumerateModules()[0].base;
 var Offsets = {
     base: moduleBase,
     Avatar: { 
-        getAvatarPos: 0x122fb1f0, 
-        setAvatarPos: 0x12319910
+        getAvatarPos: 0x12f8d5a0 ,//0x122fb1f0, 
+        setAvatarPos: 0x12f9a9d0 ,//0x12319910
     },
     getAddress: function(o) { return this.base.add(o); },
     createFunction: function(o, r, a) { return new NativeFunction(this.getAddress(o), r, a); }
@@ -125,10 +125,10 @@ setInterval(function() {
                 if (isKeyPressed(VK_S)) keys += "S ";
                 if (isKeyPressed(VK_A)) keys += "A ";
                 if (isKeyPressed(VK_D)) keys += "D ";
-                if (isKeyPressed(VK_SPACE) && !isMovingHorizontal) keys += "↑ ";
-                if (isKeyPressed(VK_SHIFT) && !isMovingHorizontal) keys += "↓ ";
+                if (isKeyPressed(VK_SPACE) && !isMovingHorizontal) keys += "UP ";
+                if (isKeyPressed(VK_SHIFT) && !isMovingHorizontal) keys += "DOWN ";
                 
-                send("[Noclip] " + keys + "→ Pos: X=" + nx.toFixed(1) + " Y=" + ny.toFixed(1) + " Z=" + nz.toFixed(1) + " | lockedY=" + (lockedY ? lockedY.toFixed(2) : "null"));
+                send("[Noclip] " + keys + "-> Pos: X=" + nx.toFixed(1) + " Y=" + ny.toFixed(1) + " Z=" + nz.toFixed(1) + " | lockedY=" + (lockedY ? lockedY.toFixed(2) : "null"));
                 lastLogTime = now;
             }
         }
