@@ -6,9 +6,9 @@ send("Starting Genshin God Mode...");
 var moduleBase = Process.enumerateModules()[0].base;
 var Offsets = {
     base: moduleBase,
-    GodMode: { checkTargetAttackable: 0x11591c50, getRuntimeID: 0xacf40, setRuntimeID: 0xa849b00 },
-    Avatar: { avatarIsHost: 0x1155d610 },
-    Physics: { getVelocity: 0x17d2cac0, setVelocity: 0x17dab440, prePhysicsUpdate: 0xa7af220, postPhysicsUpdate: 0xa7af7b0 },
+    GodMode: { checkTargetAttackable: 0x123e2760, getRuntimeID: 0xaf380 , setRuntimeID: 0x13032a90  }, //getRuntimeID 0xacf40  setRuntimeID 0xa849b00
+    Avatar: { avatarIsHost: 0x123fdec0  }, //0x1155d610
+    Physics: { getVelocity: 0x18f73270 , setVelocity: 0x18ff30b0, prePhysicsUpdate: 0xa7af040, postPhysicsUpdate: 0xa7af220 }, 
     getAddress: function(o) { return this.base.add(o); },
     createFunction: function(o, r, a) { return new NativeFunction(this.getAddress(o), r, a); }
 };
