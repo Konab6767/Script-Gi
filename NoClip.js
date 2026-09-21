@@ -139,3 +139,29 @@ setInterval(function() {
 
 send("[Noclip] Script carregado!");
 send("[Noclip] W/S = frente/trás | A/D = esquerda/direita | Space = subir | Shift = descer");
+
+var noClipEnabled = false;
+
+rpc.exports = {
+    toggleNoClip: function(enabled, speedValue) {
+        if (enabled) {
+            if (speedValue) speed = speedValue;
+            startNoClip();
+            noClipEnabled = true;
+            send("[Noclip] Enabled");
+        } else {
+            stopNoClip();
+            noClipEnabled = false;
+            send("[Noclip] Disabled");
+        }
+        return true;
+    },
+    setSpeed: function(speedValue) {
+        speed = speedValue;
+        send("[Noclip] Speed set to " + speed);
+        return true;
+    },
+    getStatus: function() {
+        return { enabled: noClipEnabled, speed: speed };
+    }
+};
