@@ -2,9 +2,33 @@ var moduleBase = Process.getModuleByName("GenshinImpact.exe").base;
 
 send("[Talk] Module base: " + moduleBase);
 
+// ============================================
+// RVA ADDRESSES
+// ============================================
+var RVAs = {
+    // Time Scale
+    Time_get_timeScale: "0x18f8a6e0",
+    Time_set_timeScale: "0x18f8a6f0",
+    
+    // Talk System
+    StartTalk: "0x0F34AE20",
+    RequestTalkFinish: "0x0F36FF00",
+    BeforeStartTalk: "0x0F36D470",
+    DoTalkSkip: "0xf35d140",
+    CheckIsInTalk: "0xf36d880"
+};
+
+// ============================================
+// NATIVE FUNCTIONS
+// ============================================
 // Time scale functions for speed hack
-var Time_get_timeScale = new NativeFunction(moduleBase.add(ptr("0x18f8a6e0")), 'float', []);
-var Time_set_timeScale = new NativeFunction(moduleBase.add(ptr("0x18f8a6f0")), 'void', ['float']);
+var Time_get_timeScale = new NativeFunction(moduleBase.add(ptr(RVAs.Time_get_timeScale)), 'float', []);
+var Time_set_timeScale = new NativeFunction(moduleBase.add(ptr(RVAs.Time_set_timeScale)), 'void', ['float']);
+
+// Skip functions
+var DoTalkSkipAddr = moduleBase.add(ptr(RVAs.DoTalkSkip));
+var RequestTalkFinishAddr = moduleBase.add(ptr(RVAs.RequestTalkFinish));
+var CheckIsInTalkAddr = moduleBase.add(ptr(RVAs.CheckIsInTalk));
 
 var normalTimeScale = 1.0;
 var dialogTimeScale = 20.0;
@@ -44,7 +68,7 @@ function startAutoClick() {
     if (clickInterval) return;
     send("[Click] Auto-click F INICIADO");
     clickInterval = setInterval(function() {
-        if (talkActive) {
+        if (talkActive && autoDialogEnabled) {
             keybd_event(VK_F, 0, 0, ptr(0)); // key down
             keybd_event(VK_F, 0, KEYEVENTF_KEYUP, ptr(0)); // key up
         }
@@ -59,15 +83,11 @@ function stopAutoClick() {
     }
 }
 
-// Skip functions via Interceptor (safer for IL2CPP)
-var DoTalkSkipAddr = moduleBase.add(ptr("0xf35d140"));
-var RequestTalkFinishAddr = moduleBase.add(ptr("0xf36ff00"));//("0xe9c5e70"));
-var CheckIsInTalkAddr = moduleBase.add(ptr("0xf36d880"));
-
 var talkActive = false;
+var autoDialogEnabled = false;
 
 function autoSkipTalk() {
-    if (!talkActive) return;
+    if (!talkActive || !autoDialogEnabled) return;
     send("[Talk] Auto-skip triggered");
     try {
         var doSkipFn = new NativeFunction(DoTalkSkipAddr, 'void', [], 'fastcall');
@@ -86,34 +106,23 @@ function autoSkipTalk() {
 }
 
 // Auto-skip when talk starts + SPEED UP + AUTO-CLICK
-Interceptor.attach(moduleBase.add(ptr("0xe9b8780")), { // StartTalk
+Interceptor.attach(moduleBase.add(ptr(RVAs.StartTalk)), { // StartTalk
     onEnter: function(args) {
         send("[Talk] StartTalk ENTER");
     },
     onLeave: function(retval) {
         talkActive = true;
-        speedUp(); // AUMENTA VELOCIDADE QUANDO INICIA DIALOG
-        startAutoClick(); // INICIA AUTO-CLICK F
-        send("[Talk] StartTalk LEAVE - dialogo iniciado, speed UP + auto-click F + auto-skip em 100ms, retval=" + retval);
-        setTimeout(autoSkipTalk, 100);
-    }
-});
-
-Interceptor.attach(moduleBase.add(ptr("0xe9cf080")), { // OnCreateTalkFinish
-    onEnter: function(args) {
-        send("[Talk] OnCreateTalkFinish ENTER");
-    },
-    onLeave: function(retval) {
-        send("[Talk] OnCreateTalkFinish LEAVE - retval=" + retval + ", talkActive=" + talkActive);
-        if (talkActive) {
-            send("[Talk] Talk criado - auto-skip imediato");
-            autoSkipTalk();
+        if (autoDialogEnabled) {
+            speedUp(); // AUMENTA VELOCIDADE QUANDO INICIA DIALOG
+            startAutoClick(); // INICIA AUTO-CLICK F
+            send("[Talk] StartTalk LEAVE - dialogo iniciado, speed UP + auto-click F + auto-skip em 100ms, retval=" + retval);
+            setTimeout(autoSkipTalk, 100);
         }
     }
 });
 
 // Reset when talk ends + RESTORE SPEED + STOP AUTO-CLICK
-Interceptor.attach(moduleBase.add(ptr("0xf36ff00")), { // RequestTalkFinish
+Interceptor.attach(moduleBase.add(ptr(RVAs.RequestTalkFinish)), { // RequestTalkFinish
     onEnter: function(args) {
         send("[Talk] RequestTalkFinish ENTER - args=" + args.length);
     },
@@ -121,17 +130,19 @@ Interceptor.attach(moduleBase.add(ptr("0xf36ff00")), { // RequestTalkFinish
         send("[Talk] RequestTalkFinish LEAVE - retval=" + retval);
         if (retval.toInt32()) {
             talkActive = false;
-            restoreSpeed(); // RESTAURA VELOCIDADE QUANDO TERMINA DIALOG
-            stopAutoClick(); // PARA AUTO-CLICK F
-            send("[Talk] Conversa finalizada - speed RESTAURADO + auto-click PARADO");
+            if (autoDialogEnabled) {
+                restoreSpeed(); // RESTAURA VELOCIDADE QUANDO TERMINA DIALOG
+                stopAutoClick(); // PARA AUTO-CLICK F
+                send("[Talk] Conversa finalizada - speed RESTAURADO + auto-click PARADO");
+            }
         }
     }
 });
 
 // Also restore on BeforeStartTalk (in case of cancel)
-Interceptor.attach(moduleBase.add(ptr("0xf36d470")), { // BeforeStartTalk
+Interceptor.attach(moduleBase.add(ptr(RVAs.BeforeStartTalk)), { // BeforeStartTalk
     onLeave: function(retval) {
-        if (!talkActive) {
+        if (!talkActive && autoDialogEnabled) {
             restoreSpeed();
             stopAutoClick();
         }
@@ -140,58 +151,13 @@ Interceptor.attach(moduleBase.add(ptr("0xf36d470")), { // BeforeStartTalk
 
 send("[Talk] Auto-skip + Auto-speed + Auto-click F ATIVO - dialogos serao acelerados, clicados e pulados automaticamente");
 
-var talkRVAs = [
-    { name: "StartTalk", rva: "0xe9b8780" },
-    { name: "StartTalkInternal", rva: "0xe9d88c0" },
-    { name: "BeforeStartTalk", rva: "0xe9d2990" },
-    { name: "GetDummyPointFromTalk", rva: "0xe9b7820" },
-    { name: "CreateTalkActionByPerformCfgInternal", rva: "0xe9ce240" },
-    { name: "OnCreateTalkFinish", rva: "0xe9cf080" },
-    { name: "GetAutoTalkSkipTime", rva: "0xe9bbfa0" },
-    { name: "LoadTalkAvatarMasks", rva: "0xe9c7230" },
-];
-
-var activeCount = 0;
-
-function hookRVA(name, rva) {
-    var addr = moduleBase.add(ptr(rva));
-    try {
-        Interceptor.attach(addr, {
-            onEnter: function(args) {
-                send("[Talk] ATIVO: " + name);
-                try {
-                    var argc = args.length;
-                    if (argc > 0) {
-                        var argStr = [];
-                        for (var i = 0; i < argc; i++) {
-                            argStr.push("arg" + i + "=" + args[i]);
-                        }
-                        send("[Talk] Args: " + argStr.join(", "));
-                    }
-                } catch (e) {
-                    send("[Talk] Args error: " + e);
-                }
-                this.active = true;
-            },
-            onLeave: function(retval) {
-                if (this.active) {
-                    send("[Talk] SAINDO: " + name + " -> " + retval);
-                }
-            }
-        });
-        activeCount++;
-        send("[+] Hooked " + name + " at " + addr);
+rpc.exports = {
+    toggleAutoDialog: function(enabled) {
+        autoDialogEnabled = enabled;
+        send("[Talk] Auto Dialog " + (enabled ? "enabled" : "disabled"));
         return true;
-    } catch (e) {
-        send("[-] Falhou " + name + ": " + e);
-        return false;
+    },
+    getStatus: function() {
+        return { enabled: autoDialogEnabled, talkActive: talkActive };
     }
-}
-
-send("[Talk] Hookeando " + talkRVAs.length + " RVAs essenciais do sistema de conversa...");
-talkRVAs.forEach(function(m) {
-    hookRVA(m.name, m.rva);
-});
-
-send("[Talk] Total hookeado: " + activeCount + " / " + talkRVAs.length);
-send("[Talk] Fale com NPC - velocidade aumenta para x" + dialogTimeScale + " e pula automaticamente");
+};
