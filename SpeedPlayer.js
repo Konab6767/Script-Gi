@@ -4,18 +4,48 @@ console.log("[*] SpeedPlayer.js iniciado!");
 const il2cpp_base = Process.findModuleByName("GenshinImpact.exe").base;
 console.log("[+] Base do módulo: " + il2cpp_base);
 
-const RVA_GetPlayerEntity = 0x12f84db0; // 0x11a28980;
+const RVA_GetPlayerEntity = 0x12F84DB0;
 const GetPlayerEntity = new NativeFunction(il2cpp_base.add(RVA_GetPlayerEntity), 'pointer', []);
 
-const RVA_SetAvatarEntityMoveRatio = 0x12f7e5f0;
+const RVA_SetAvatarEntityMoveRatio = 0x12F7E5F0;
 const SetAvatarEntityMoveRatio = new NativeFunction(il2cpp_base.add(RVA_SetAvatarEntityMoveRatio), 'void', ['pointer', 'float', 'uint8']);
 
 console.log("[+] Funções carregadas!");
 
-const playerEntity = GetPlayerEntity();
-console.log("[+] Player Entity: " + playerEntity);
+var playerSpeedEnabled = false;
 
-if (!playerEntity.isNull()) {
-    SetAvatarEntityMoveRatio(playerEntity, 10.0, 0);
-    console.log("[+] Velocidade definida para 5x!");
+function setPlayerSpeed(speed) {
+    try {
+        const playerEntity = GetPlayerEntity();
+        console.log("[DEBUG] PlayerEntity: " + playerEntity);
+        
+        if (!playerEntity.isNull() && playerEntity.toInt32() !== 0) {
+            SetAvatarEntityMoveRatio(playerEntity, speed, 0);
+            playerSpeedEnabled = (speed !== 1.0);
+            console.log("[+] Velocidade definida para " + speed + "x!");
+            return true;
+        } else {
+            console.log("[-] Player entity not found or invalid");
+            return false;
+        }
+    } catch(e) {
+        console.log("[-] Error setting speed: " + e);
+        return false;
+    }
 }
+
+rpc.exports = {
+    togglePlayerSpeed: function(enabled, speed) {
+        console.log("[DEBUG] togglePlayerSpeed called: enabled=" + enabled + ", speed=" + speed);
+        if (enabled) {
+            return setPlayerSpeed(speed || 5.0);
+        } else {
+            return setPlayerSpeed(1.0);
+        }
+    },
+    getStatus: function() {
+        return { enabled: playerSpeedEnabled };
+    }
+};
+
+console.log("[+] SpeedPlayer.js RPC exports loaded!");
