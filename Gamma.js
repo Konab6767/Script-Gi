@@ -10,11 +10,11 @@ var moduleBase = Process.enumerateModules()[0].base;
 // Offsets de campos baseados no 6.3Dump.cs
 var Offsets = {
     base: moduleBase,
-    PostProcessLayer_Update: 0x06DE0A60,
+    PostProcessLayer_Update: 0x07086E90,
     // Métodos set (para gamma e resolution scale)
-    set_gammaValue: 0x06DDC380,
-    set_innerResolutionScale: 0x06DDC3D0,
-    set_cameraBufferDirty: 0x06DDC3B0,
+    set_gammaValue: 0x070827D0,
+    set_innerResolutionScale: 0x07082820,
+    set_cameraBufferDirty: 0x07082800,
     // Offsets de campos (para outline)
     field_outlineCorrectionWidth: 0x30
 };

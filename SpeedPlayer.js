@@ -4,10 +4,10 @@ console.log("[*] SpeedPlayer.js iniciado!");
 const il2cpp_base = Process.findModuleByName("GenshinImpact.exe").base;
 console.log("[+] Base do módulo: " + il2cpp_base);
 
-const RVA_GetPlayerEntity = 0x12F84DB0;
+const RVA_GetPlayerEntity = 0x13AA1C40;
 const GetPlayerEntity = new NativeFunction(il2cpp_base.add(RVA_GetPlayerEntity), 'pointer', []);
 
-const RVA_SetAvatarEntityMoveRatio = 0x12F7E5F0;
+const RVA_SetAvatarEntityMoveRatio = 0x13A9DBB0;
 const SetAvatarEntityMoveRatio = new NativeFunction(il2cpp_base.add(RVA_SetAvatarEntityMoveRatio), 'void', ['pointer', 'float', 'uint8']);
 
 console.log("[+] Funções carregadas!");

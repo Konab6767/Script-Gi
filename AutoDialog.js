@@ -7,15 +7,15 @@ send("[Talk] Module base: " + moduleBase);
 // ============================================
 var RVAs = {
     // Time Scale
-    Time_get_timeScale: "0x18f8a6e0",
+    Time_get_timeScale: "0x19BE87F0",
     Time_set_timeScale: "0x18f8a6f0",
     
     // Talk System
-    StartTalk: "0x0F34AE20",
-    RequestTalkFinish: "0x0F36FF00",
-    BeforeStartTalk: "0x0F36D470",
-    DoTalkSkip: "0xf35d140",
-    CheckIsInTalk: "0xf36d880"
+    StartTalk: "0x085B6200",
+    RequestTalkFinish: "0x0000000",//"0x0F36FF00",
+    BeforeStartTalk: "0x0000000",//"0x0F36D470",
+    DoTalkSkip: "0x0000000",//"0xf35d140",
+    CheckIsInTalk: "0x0000000",//"0xf36d880"
 };
 
 // ============================================

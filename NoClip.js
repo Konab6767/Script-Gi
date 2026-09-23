@@ -5,8 +5,8 @@ var moduleBase = Process.enumerateModules()[0].base;
 var Offsets = {
     base: moduleBase,
     Avatar: { 
-        getAvatarPos: 0x12f8d5a0,
-        setAvatarPos: 0x12f9a9d0
+        getAvatarPos: 0x13AAF060,
+        setAvatarPos: 0x13ABC900
     },
     getAddress: function(o) { return this.base.add(o); },
     createFunction: function(o, r, a) { return new NativeFunction(this.getAddress(o), r, a); }
