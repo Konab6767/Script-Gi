@@ -9,13 +9,11 @@ var RVAs = {
     // Time Scale
     Time_get_timeScale: "0x19BE87F0",
     Time_set_timeScale: "0x18f8a6f0",
-    
+
     // Talk System
-    StartTalk: "0x085B6200",
-    RequestTalkFinish: "0x0000000",//"0x0F36FF00",
-    BeforeStartTalk: "0x0000000",//"0x0F36D470",
-    DoTalkSkip: "0x0000000",//"0xf35d140",
-    CheckIsInTalk: "0x0000000",//"0xf36d880"
+    StartTalk: "0x85b6200", // StartTalkPrepareInter
+    RequestTalkFinish: "0x8239e10", // InvokeOnFinalTalkFinish
+    CheckIsInTalk: "0xff2e1a0" // IsInTalk
 };
 
 // ============================================
@@ -26,7 +24,6 @@ var Time_get_timeScale = new NativeFunction(moduleBase.add(ptr(RVAs.Time_get_tim
 var Time_set_timeScale = new NativeFunction(moduleBase.add(ptr(RVAs.Time_set_timeScale)), 'void', ['float']);
 
 // Skip functions
-var DoTalkSkipAddr = moduleBase.add(ptr(RVAs.DoTalkSkip));
 var RequestTalkFinishAddr = moduleBase.add(ptr(RVAs.RequestTalkFinish));
 var CheckIsInTalkAddr = moduleBase.add(ptr(RVAs.CheckIsInTalk));
 
@@ -86,25 +83,6 @@ function stopAutoClick() {
 var talkActive = false;
 var autoDialogEnabled = false;
 
-function autoSkipTalk() {
-    if (!talkActive || !autoDialogEnabled) return;
-    send("[Talk] Auto-skip triggered");
-    try {
-        var doSkipFn = new NativeFunction(DoTalkSkipAddr, 'void', [], 'fastcall');
-        doSkipFn();
-        send("[Talk] DoTalkSkip called SUCCESS");
-    } catch (e) {
-        send("[Talk] DoTalkSkip failed: " + e);
-    }
-    try {
-        var reqFinishFn = new NativeFunction(RequestTalkFinishAddr, 'bool', ['pointer', 'pointer'], 'fastcall');
-        var result = reqFinishFn(ptr(0), ptr(0));
-        send("[Talk] RequestTalkFinish = " + result + " SUCCESS");
-    } catch (e) {
-        send("[Talk] RequestTalkFinish failed: " + e);
-    }
-}
-
 // Auto-skip when talk starts + SPEED UP + AUTO-CLICK
 Interceptor.attach(moduleBase.add(ptr(RVAs.StartTalk)), { // StartTalk
     onEnter: function(args) {
@@ -115,8 +93,7 @@ Interceptor.attach(moduleBase.add(ptr(RVAs.StartTalk)), { // StartTalk
         if (autoDialogEnabled) {
             speedUp(); // AUMENTA VELOCIDADE QUANDO INICIA DIALOG
             startAutoClick(); // INICIA AUTO-CLICK F
-            send("[Talk] StartTalk LEAVE - dialogo iniciado, speed UP + auto-click F + auto-skip em 100ms, retval=" + retval);
-            setTimeout(autoSkipTalk, 100);
+            send("[Talk] StartTalk LEAVE - dialogo iniciado, speed UP + auto-click F, retval=" + retval);
         }
     }
 });
@@ -139,17 +116,7 @@ Interceptor.attach(moduleBase.add(ptr(RVAs.RequestTalkFinish)), { // RequestTalk
     }
 });
 
-// Also restore on BeforeStartTalk (in case of cancel)
-Interceptor.attach(moduleBase.add(ptr(RVAs.BeforeStartTalk)), { // BeforeStartTalk
-    onLeave: function(retval) {
-        if (!talkActive && autoDialogEnabled) {
-            restoreSpeed();
-            stopAutoClick();
-        }
-    }
-});
-
-send("[Talk] Auto-skip + Auto-speed + Auto-click F ATIVO - dialogos serao acelerados, clicados e pulados automaticamente");
+send("[Talk] Auto-speed + Auto-click F ATIVO - dialogos serao acelerados e clicados automaticamente");
 
 rpc.exports = {
     toggleAutoDialog: function(enabled) {
