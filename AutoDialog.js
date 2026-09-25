@@ -1,130 +1,111 @@
 var moduleBase = Process.getModuleByName("GenshinImpact.exe").base;
-
-send("[Talk] Module base: " + moduleBase);
-
-// ============================================
-// RVA ADDRESSES
-// ============================================
-var RVAs = {
-    // Time Scale
-    Time_get_timeScale: "0x19BE87F0",
-    Time_set_timeScale: "0x18f8a6f0",
-
-    // Talk System
-    StartTalk: "0x85b6200", // StartTalkPrepareInter
-    RequestTalkFinish: "0x8239e10", // InvokeOnFinalTalkFinish
-    CheckIsInTalk: "0xff2e1a0" // IsInTalk
-};
-
-// ============================================
-// NATIVE FUNCTIONS
-// ============================================
-// Time scale functions for speed hack
-var Time_get_timeScale = new NativeFunction(moduleBase.add(ptr(RVAs.Time_get_timeScale)), 'float', []);
-var Time_set_timeScale = new NativeFunction(moduleBase.add(ptr(RVAs.Time_set_timeScale)), 'void', ['float']);
-
-// Skip functions
-var RequestTalkFinishAddr = moduleBase.add(ptr(RVAs.RequestTalkFinish));
-var CheckIsInTalkAddr = moduleBase.add(ptr(RVAs.CheckIsInTalk));
-
+var RVA_get_timeScale = 0x19BE87F0;
+var RVA_set_timeScale = 0x19BE8800;
+var RVA_MonoTalkDialog_OnEnable = 0xf2e5440;
+var RVA_MonoTalkDialog_HideDialog = 0xf2e2cf0;
+var get_timeScale = new NativeFunction(moduleBase.add(RVA_get_timeScale), 'float', []);
+var set_timeScale = new NativeFunction(moduleBase.add(RVA_set_timeScale), 'void', ['float']);
+var user32 = Process.getModuleByName("user32.dll");
+var keybd_event = new NativeFunction(user32.findExportByName("keybd_event"), 'void', ['uint8', 'uint8', 'uint32', 'pointer']);
+var VK_SPACE = 0x20;
+var VK_F = 0x46;
+var KEYEVENTF_KEYUP = 0x0002;
+var talkActive = false;
+var autoDialogEnabled = true;
+var useFKey = false;
+var dialogVelocity = 20.0;
+var clickInterval = null;
+var currentTalkDialog = null;
 var normalTimeScale = 1.0;
 var dialogTimeScale = 20.0;
-var currentTimeScale = 1.0;
 
 function setTimeScale(scale) {
     try {
-        Time_set_timeScale(scale);
-        currentTimeScale = scale;
-        send("[Speed] TimeScale set to x" + scale);
+        set_timeScale(scale);
     } catch (e) {
-        send("[Speed] Failed to set TimeScale: " + e);
+        // Silent error
     }
 }
 
-function speedUp() {
-    if (currentTimeScale !== dialogTimeScale) {
-        setTimeScale(dialogTimeScale);
-    }
+function pressKey() {
+    var vk = useFKey ? VK_F : VK_SPACE;
+    keybd_event(vk, 0, 0, ptr(0)); // key down
+    keybd_event(vk, 0, KEYEVENTF_KEYUP, ptr(0)); // key up
 }
 
-function restoreSpeed() {
-    if (currentTimeScale !== normalTimeScale) {
-        setTimeScale(normalTimeScale);
-    }
-}
-
-// Auto-clicker F key
-var user32 = Process.getModuleByName("user32.dll");
-var keybd_event = new NativeFunction(user32.findExportByName("keybd_event"), 'void', ['uint8', 'uint8', 'uint32', 'pointer']);
-var VK_F = 0x46;
-var KEYEVENTF_KEYUP = 0x0002;
-
-var clickInterval = null;
-
-function startAutoClick() {
-    if (clickInterval) return;
-    send("[Click] Auto-click F INICIADO");
-    clickInterval = setInterval(function() {
-        if (talkActive && autoDialogEnabled) {
-            keybd_event(VK_F, 0, 0, ptr(0)); // key down
-            keybd_event(VK_F, 0, KEYEVENTF_KEYUP, ptr(0)); // key up
-        }
-    }, 50); // 20 clicks/sec
-}
-
-function stopAutoClick() {
-    if (clickInterval) {
-        clearInterval(clickInterval);
-        clickInterval = null;
-        send("[Click] Auto-click F PARADO");
-    }
-}
-
-var talkActive = false;
-var autoDialogEnabled = false;
-
-// Auto-skip when talk starts + SPEED UP + AUTO-CLICK
-Interceptor.attach(moduleBase.add(ptr(RVAs.StartTalk)), { // StartTalk
+// Hook MonoTalkDialog_OnEnable - dialog starts
+Interceptor.attach(moduleBase.add(RVA_MonoTalkDialog_OnEnable), {
     onEnter: function(args) {
-        send("[Talk] StartTalk ENTER");
-    },
-    onLeave: function(retval) {
-        talkActive = true;
-        if (autoDialogEnabled) {
-            speedUp(); // AUMENTA VELOCIDADE QUANDO INICIA DIALOG
-            startAutoClick(); // INICIA AUTO-CLICK F
-            send("[Talk] StartTalk LEAVE - dialogo iniciado, speed UP + auto-click F, retval=" + retval);
+        if (!talkActive && autoDialogEnabled) {
+            talkActive = true;
+            currentTalkDialog = args[0];
+            
+            // Set speed to dialogVelocity
+            dialogTimeScale = dialogVelocity;
+            setTimeScale(dialogTimeScale);
+            
+            // Start auto-click key every 0.1 seconds
+            if (clickInterval) clearInterval(clickInterval);
+            clickInterval = setInterval(function() {
+                if (talkActive && autoDialogEnabled) {
+                    pressKey();
+                }
+            }, 100); // 0.1 seconds
         }
     }
 });
 
-// Reset when talk ends + RESTORE SPEED + STOP AUTO-CLICK
-Interceptor.attach(moduleBase.add(ptr(RVAs.RequestTalkFinish)), { // RequestTalkFinish
+// Hook MonoTalkDialog_HideDialog - dialog ends
+Interceptor.attach(moduleBase.add(RVA_MonoTalkDialog_HideDialog), {
     onEnter: function(args) {
-        send("[Talk] RequestTalkFinish ENTER - args=" + args.length);
-    },
-    onLeave: function(retval) {
-        send("[Talk] RequestTalkFinish LEAVE - retval=" + retval);
-        if (retval.toInt32()) {
+        var hide = args[1].toInt32();
+        if (hide && talkActive) {
             talkActive = false;
-            if (autoDialogEnabled) {
-                restoreSpeed(); // RESTAURA VELOCIDADE QUANDO TERMINA DIALOG
-                stopAutoClick(); // PARA AUTO-CLICK F
-                send("[Talk] Conversa finalizada - speed RESTAURADO + auto-click PARADO");
+            currentTalkDialog = null;
+            
+            // Stop auto-click
+            if (clickInterval) {
+                clearInterval(clickInterval);
+                clickInterval = null;
             }
+            
+            // Restore speed to 1x
+            setTimeScale(normalTimeScale);
         }
     }
 });
 
-send("[Talk] Auto-speed + Auto-click F ATIVO - dialogos serao acelerados e clicados automaticamente");
-
+// RPC Functions
 rpc.exports = {
-    toggleAutoDialog: function(enabled) {
+    toggleAutoDialog: function(enabled, useF, velocity) {
         autoDialogEnabled = enabled;
-        send("[Talk] Auto Dialog " + (enabled ? "enabled" : "disabled"));
-        return true;
+        useFKey = useF || false;
+        if (velocity) {
+            dialogVelocity = velocity;
+        }
+        if (!enabled && clickInterval) {
+            clearInterval(clickInterval);
+            clickInterval = null;
+            talkActive = false;
+            setTimeScale(normalTimeScale);
+        }
+        return { success: true, enabled: autoDialogEnabled, useFKey: useFKey, velocity: dialogVelocity };
+    },
+    setVelocity: function(velocity) {
+        dialogVelocity = velocity;
+        if (talkActive) {
+            dialogTimeScale = dialogVelocity;
+            setTimeScale(dialogTimeScale);
+        }
+        return { success: true, velocity: dialogVelocity };
     },
     getStatus: function() {
-        return { enabled: autoDialogEnabled, talkActive: talkActive };
+        return {
+            enabled: autoDialogEnabled,
+            active: talkActive,
+            speed: dialogTimeScale,
+            useFKey: useFKey,
+            velocity: dialogVelocity
+        };
     }
 };
