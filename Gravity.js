@@ -2,7 +2,7 @@
 var moduleBase = Process.enumerateModules()[0].base;
 
 // Hook Rigidbody.set_velocity to prevent falling
-var setVelocityAddr = moduleBase.add(0x13A9A2E0); // Rigidbody.set_velocity RVA: 0x13A9A2E0
+var setVelocityAddr = moduleBase.add(0x19c5e130); // Rigidbody.set_velocity RVA: 0x13A9A2E0
 
 var gravityHook = null;
 var gravityEnabled = false;
