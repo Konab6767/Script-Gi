@@ -1,6 +1,9 @@
 // Multihit.js - Script para multi-hit usando HEAPIJIOJFB do dump_71
 // Testando HEAPIJIOJFB (0xB553AC0) - método de instância em LcAvatarCombat que recebe uint32 e pointer
 
+var multiHitEnabled = true;
+var hitCount = 20;
+
 var module = Process.findModuleByName("GenshinImpact.exe");
 
 if (!module) {
@@ -26,21 +29,44 @@ if (!module) {
     try {
         Interceptor.attach(va_HEAPIJIOJFB, {
             onEnter: function(args) {
+                if (!multiHitEnabled) {
+                    return;
+                }
+                
                 console.log("[*] Multihit: HEAPIJIOJFB chamado");
                 console.log("    __this: " + args[0]);
                 console.log("    uint32: " + args[1]);
                 console.log("    pointer: " + args[2]);
                 
-                // Chamar a função original 8 vezes para simular 8 hits
-                for (var i = 0; i < 8; i++) {
+                // Chamar a função original hitCount vezes para simular multi-hit
+                for (var i = 0; i < hitCount; i++) {
                     original_HEAPIJIOJFB(args[0], args[1], args[2]);
                 }
+                
+                console.log("[+] Multihit: " + hitCount + "x damage applied");
             }
         });
-        console.log("[*] Multihit: Hook HEAPIJIOJFB instalado - Multi-hit 8x ativado!");
+        console.log("[*] Multihit: Hook HEAPIJIOJFB instalado - Multi-hit " + hitCount + "x ativado!");
     } catch (e) {
         console.log("[!] Multihit: Erro ao hook HEAPIJIOJFB: " + e);
     }
     
     console.log("[*] Multihit: Ataque no jogo para testar o multi-hit.");
 }
+
+rpc.exports = {
+    setMultiplier: function(multiplier) {
+        hitCount = multiplier;
+        console.log("[*] Multi-hit multiplier set to: " + hitCount);
+    },
+    toggle: function(enabled) {
+        multiHitEnabled = enabled;
+        console.log("[*] Multi-hit " + (enabled ? "enabled" : "disabled"));
+    },
+    getStatus: function() {
+        return {
+            enabled: multiHitEnabled,
+            multiplier: hitCount
+        };
+    }
+};
