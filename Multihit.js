@@ -1,58 +1,65 @@
-// Multihit.js - Script para multi-hit usando HEAPIJIOJFB do dump_71
-// Testando HEAPIJIOJFB (0xB553AC0) - método de instância em LcAvatarCombat que recebe uint32 e pointer
+// Multi-hit script using Frida
+// Hooks the combat function at RVA 0x07AEFA60
+// Repeats the damage call 20x (similar to rapid_fire_hits = 20)
+// WARNING: RVA may need to be adjusted for GenshinImpact.exe base
+
+console.log("[*] Multi-hit script started");
+
+// Find GenshinImpact.exe module
+var genshinImpact = Process.findModuleByName("GenshinImpact.exe");
+if (!genshinImpact) {
+    console.log("[-] GenshinImpact.exe not found!");
+}
+
+console.log("[+] GenshinImpact.exe base: " + genshinImpact.base);
 
 var multiHitEnabled = true;
 var hitCount = 20;
 
-var module = Process.findModuleByName("GenshinImpact.exe");
+// Calculate target address: base + RVA 0x07AEFA60
+var combatFuncAddr = genshinImpact.base.add(0x07AEFA60);
+console.log("[+] Combat function address: " + combatFuncAddr);
 
-if (!module) {
-    console.log("[*] Multihit: GenshinImpact.exe não encontrado!");
-} else {
-    console.log("[*] Multihit: GenshinImpact.exe base: " + module.base);
+// Create a NativeFunction to call the original combat function
+// void __fastcall CombatFunc(void* pThis, void* pHitContext, void* pTarget, void* pParam3)
+var combatFunc = new NativeFunction(
+    combatFuncAddr,
+    'void',
+    ['pointer', 'pointer', 'pointer', 'pointer']
+);
+
+// Hook the combat function
+Interceptor.attach(combatFuncAddr, {
+    onEnter: function(args) {
+        // args[0] = this pointer (pThis)
+        // args[1] = pHitContext
+        // args[2] = pTarget
+        // args[3] = pParam3
+        
+        this.pThis = args[0];
+        this.pHitContext = args[1];
+        this.pTarget = args[2];
+        this.pParam3 = args[3];
+        
+        console.log("[*] Combat hit detected");
+    },
     
-    var baseAddr = module.base;
-    
-    // RVA HEAPIJIOJFB do dump_71_named.cs (LcAvatarCombat)
-    var rva_HEAPIJIOJFB = 0xB553AC0;
-    
-    // Calcular VA
-    var va_HEAPIJIOJFB = baseAddr.add(rva_HEAPIJIOJFB);
-    
-    console.log("[*] Multihit: HEAPIJIOJFB VA: " + va_HEAPIJIOJFB);
-    console.log("[*] Multihit: Multi-hit 8x (chamando HEAPIJIOJFB 8 vezes)");
-    
-    // Criar função original com assinatura: void(pointer, uint32, pointer)
-    var original_HEAPIJIOJFB = new NativeFunction(va_HEAPIJIOJFB, 'void', ['pointer', 'uint32', 'pointer']);
-    
-    // Hook HEAPIJIOJFB
-    try {
-        Interceptor.attach(va_HEAPIJIOJFB, {
-            onEnter: function(args) {
-                if (!multiHitEnabled) {
-                    return;
-                }
-                
-                console.log("[*] Multihit: HEAPIJIOJFB chamado");
-                console.log("    __this: " + args[0]);
-                console.log("    uint32: " + args[1]);
-                console.log("    pointer: " + args[2]);
-                
-                // Chamar a função original hitCount vezes para simular multi-hit
-                for (var i = 0; i < hitCount; i++) {
-                    original_HEAPIJIOJFB(args[0], args[1], args[2]);
-                }
-                
-                console.log("[+] Multihit: " + hitCount + "x damage applied");
-            }
-        });
-        console.log("[*] Multihit: Hook HEAPIJIOJFB instalado - Multi-hit " + hitCount + "x ativado!");
-    } catch (e) {
-        console.log("[!] Multihit: Erro ao hook HEAPIJIOJFB: " + e);
+    onLeave: function(retval) {
+        if (!multiHitEnabled) {
+            return;
+        }
+        
+        // Repeat the hit based on hitCount
+        for (var i = 0; i < hitCount; i++) {
+            // Call the original function with the same arguments
+            combatFunc(this.pThis, this.pHitContext, this.pTarget, this.pParam3);
+        }
+        
+        console.log("[+] Multi-hit applied: " + hitCount + "x damage");
     }
-    
-    console.log("[*] Multihit: Ataque no jogo para testar o multi-hit.");
-}
+});
+
+console.log("[*] Hook installed successfully");
 
 rpc.exports = {
     setMultiplier: function(multiplier) {
