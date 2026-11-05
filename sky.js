@@ -12,32 +12,32 @@ if (!genshinModule) {
     console.log(`[Graphics] Module base: ${genshinModule.base}`);
 }
 
-// Endereços das funções (baseados em il2cpp_functions.C)
+// Endereços das funções (UPDATED - baseados em 1DP.cs)
 const addresses = {
     // Fog settings
-    set_fog: genshinModule.base.add(0x19BF3670),
-    set_fogColor: genshinModule.base.add(0x19BF3630),
-    set_fogDensity: genshinModule.base.add(0x19BF3650),
-    set_bottomFogColor: genshinModule.base.add(0x19BF36B0),
-    set_topFogColor: genshinModule.base.add(0x19BF36D0),
-    set_farFogColor: genshinModule.base.add(0x19BF3730),
-    set_volumeFogScatteringColorFront: genshinModule.base.add(0x19BF33C0),
-    set_volumeFogScatteringColorBack: genshinModule.base.add(0x19BF33E0),
+    set_fog: genshinModule.base.add(0x1a24eb90),
+    set_fogColor: genshinModule.base.add(0x1a24eb50),
+    set_fogDensity: genshinModule.base.add(0x1a24eb70),
+    set_bottomFogColor: genshinModule.base.add(0x1a24ebd0),
+    set_topFogColor: genshinModule.base.add(0x1a24ebf0),
+    set_farFogColor: genshinModule.base.add(0x1a24ec50),
+    set_volumeFogScatteringColorFront: genshinModule.base.add(0x1a24e8e0),
+    set_volumeFogScatteringColorBack: genshinModule.base.add(0x1a24e900),
     
     // Sky settings
-    set_skyfront: genshinModule.base.add(0x19BD77D0),
-    set_cloudColor: genshinModule.base.add(0x19BD77B0),
+    set_skyfront: genshinModule.base.add(0x1a232cc0),
+    set_cloudColor: genshinModule.base.add(0x1a232ca0),
     
     // Camera fog
-    set_enableFogRendering: genshinModule.base.add(0x19BF7370),
+    set_enableFogRendering: genshinModule.base.add(0x1a2528c0),
     
     // Material color
-    setMaterialColor: genshinModule.base.add(0x19C17DE0), // UnityEngine_MaterialPropertyBlock_SetColorImpl
+    setMaterialColor: genshinModule.base.add(0x1a273390), // UnityEngine_MaterialPropertyBlock_SetColorImpl
     
     // Shader global settings
-    setGlobalColor: genshinModule.base.add(0x19BD8070), // UnityEngine_Shader_SetGlobalColorImpl
-    setGlobalTexture: genshinModule.base.add(0x19BD80B0), // UnityEngine_Shader_SetGlobalTextureImpl
-    setGlobalFloat: genshinModule.base.add(0x19BD8380), // UnityEngine_Shader_SetGlobalFloat
+    setGlobalColor: genshinModule.base.add(0x1a233560), // UnityEngine_Shader_SetGlobalColorImpl
+    setGlobalTexture: genshinModule.base.add(0x1a2335a0), // UnityEngine_Shader_SetGlobalTextureImpl
+    setGlobalFloat: genshinModule.base.add(0x1a233870), // UnityEngine_Shader_SetGlobalFloat
 };
 
 // Variáveis de controle (controláveis via RPC)
