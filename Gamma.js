@@ -6,17 +6,17 @@ send("Iniciando Gamma Changer...");
 
 var moduleBase = Process.enumerateModules()[0].base;
 
-// RVAs baseados no il2cpp_functions.C
+// RVAs UPDATED - baseados no 1DP.cs
 // Offsets de campos baseados no 6.3Dump.cs
 var Offsets = {
     base: moduleBase,
-    PostProcessLayer_Update: 0x07086E90,
+    PostProcessLayer_Update: 0x071b3ea0, // UPDATED
     // Métodos set (para gamma e resolution scale)
-    set_gammaValue: 0x070827D0,
-    set_innerResolutionScale: 0x07082820,
-    set_cameraBufferDirty: 0x07082800,
+    set_gammaValue: 0x071af7e0, // UPDATED
+    set_innerResolutionScale: 0x071af830, // UPDATED
+    set_cameraBufferDirty: 0x071af810, // UPDATED
     // Offsets de campos (para outline)
-    field_outlineCorrectionWidth: 0x30
+    field_outlineCorrectionWidth: 0x30 // Não encontrado RVA - manter offset
 };
 
 send("Module base: " + Offsets.base);
