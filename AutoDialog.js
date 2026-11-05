@@ -1,8 +1,8 @@
 var moduleBase = Process.getModuleByName("GenshinImpact.exe").base;
-var RVA_get_timeScale = 0x19BE87F0;
-var RVA_set_timeScale = 0x19BE8800;
-var RVA_MonoTalkDialog_OnEnable = 0xf2e5440;
-var RVA_MonoTalkDialog_HideDialog = 0xf2e2cf0;
+var RVA_get_timeScale = 0x1a243d00; // UPDATED from 1DP.cs
+var RVA_set_timeScale = 0x1a243d10; // UPDATED from 1DP.cs
+var RVA_MonoTalkDialog_OnEnable = 0xf532310; // UPDATED from 1DP.cs
+var RVA_MonoTalkDialog_HideDialog = 0xf5302e0; // UPDATED from 1DP.cs
 var get_timeScale = new NativeFunction(moduleBase.add(RVA_get_timeScale), 'float', []);
 var set_timeScale = new NativeFunction(moduleBase.add(RVA_set_timeScale), 'void', ['float']);
 var user32 = Process.getModuleByName("user32.dll");
