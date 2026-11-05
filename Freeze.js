@@ -1,144 +1,156 @@
-// Enemy Freeze - Freezes all enemies in place (with toggle key F)
-// Hooks Rigidbody functions to zero velocity and set kinematic
+// Genshin Impact Noclip Script - Sem getAvatarForward
+// Controls: W/S (forward/backward), A/D (left/right), Space (up), Shift (down)
 
-console.log("[Freeze] Starting...");
+var moduleBase = Process.enumerateModules()[0].base;
+var Offsets = {
+    base: moduleBase,
+    Avatar: { 
+        getAvatarPos: 0x13e4dc50, // UPDATED from 1DP.cs
+        setAvatarPos: 0x13e7e0f0  // UPDATED from 1DP.cs
+    },
+    getAddress: function(o) { return this.base.add(o); },
+    createFunction: function(o, r, a) { return new NativeFunction(this.getAddress(o), r, a); }
+};
 
-const genshinModule = Process.getModuleByName("GenshinImpact.exe");
-if (!genshinModule) {
-    console.log("[Freeze] ERROR: GenshinImpact.exe module not found!");
-} else {
-    console.log(`[Freeze] Module base: ${genshinModule.base}`);
-}
+var getAvatarPos = Offsets.createFunction(Offsets.Avatar.getAvatarPos, 'void', ['pointer']);
+var setAvatarPos = Offsets.createFunction(Offsets.Avatar.setAvatarPos, 'void', ['pointer']);
 
-// Endereços das funções
-const Rigidbody_set_velocity = genshinModule.base.add(0x19C5E130);
-const Rigidbody_set_angularVelocity = genshinModule.base.add(0x19C5E190);
-const Rigidbody_set_isKinematic = genshinModule.base.add(0x19C5E250);
-const Rigidbody_set_constraints = genshinModule.base.add(0x19C5E2A0);
-
-let velocityZeroed = 0;
-let kinematicSet = 0;
-let freezeEnabled = false; // Começa desativado
-
-// Detectar tecla F para toggle
 try {
-    const user32 = Process.getModuleByName("user32.dll");
-    const GetAsyncKeyStateAddr = user32.findExportByName("GetAsyncKeyState");
-    const GetAsyncKeyState = new NativeFunction(GetAsyncKeyStateAddr, 'int16', ['int']);
-    const VK_F = 0x46;
-    
-    setInterval(() => {
-        const keyState = GetAsyncKeyState(VK_F);
-        if (keyState & 0x8000) {
-            freezeEnabled = !freezeEnabled;
-            console.log(`[Freeze] Freeze ${freezeEnabled ? 'ENABLED' : 'DISABLED'} (Press F to toggle)`);
-        }
-    }, 100);
-} catch (e) {
-    console.log("[Freeze] Warning: Could not setup toggle key");
+    var user32 = Process.getModuleByName("user32.dll");
+    var GetAsyncKeyStateAddr = user32.findExportByName("GetAsyncKeyState");
+    var GetAsyncKeyState = new NativeFunction(GetAsyncKeyStateAddr, 'int16', ['int']);
+} catch(e) {
+    var GetAsyncKeyState = function() { return 0; };
 }
 
-// Hook para set_velocity - forçar velocidade zero (quando freeze enabled)
-Interceptor.attach(Rigidbody_set_velocity, {
-    onEnter: function(args) {
-        // args[0] = Rigidbody pointer
-        // args[1] = velocity (Vector3)
-        
-        if (!freezeEnabled) return;
-        
-        try {
-            if (!args[0] || args[0].isNull()) return;
-            if (!args[1] || args[1].isNull()) return;
-            
-            velocityZeroed++;
-            
-            // Criar Vector3 zero
-            const zeroVec = Memory.alloc(12); // 3 floats (x, y, z)
-            zeroVec.writeFloat(0); // x
-            zeroVec.add(4).writeFloat(0); // y
-            zeroVec.add(8).writeFloat(0); // z
-            
-            args[1] = zeroVec;
-        } catch (e) {
-            // Erro, ignorar
-        }
-    }
-});
+// Key codes
+var VK_W = 0x57;
+var VK_A = 0x41;
+var VK_S = 0x53;
+var VK_D = 0x44;
+var VK_SPACE = 0x20;
+var VK_SHIFT = 0x10;
 
-// Hook para set_angularVelocity - forçar velocidade angular zero (quando freeze enabled)
-Interceptor.attach(Rigidbody_set_angularVelocity, {
-    onEnter: function(args) {
-        // args[0] = Rigidbody pointer
-        // args[1] = angularVelocity (Vector3)
-        
-        if (!freezeEnabled) return;
-        
-        try {
-            if (!args[0] || args[0].isNull()) return;
-            if (!args[1] || args[1].isNull()) return;
-            
-            // Criar Vector3 zero
-            const zeroVec = Memory.alloc(12);
-            zeroVec.writeFloat(0);
-            zeroVec.add(4).writeFloat(0);
-            zeroVec.add(8).writeFloat(0);
-            
-            args[1] = zeroVec;
-        } catch (e) {
-            // Erro, ignorar
-        }
-    }
-});
+// Movement speed
+var speed = 1.0;
 
-// Hook para set_isKinematic - forçar kinematic = true (quando freeze enabled)
-Interceptor.attach(Rigidbody_set_isKinematic, {
-    onEnter: function(args) {
-        // args[0] = Rigidbody pointer
-        // args[1] = isKinematic (bool)
-        
-        if (!freezeEnabled) return;
-        
+// Variável para travar a altura
+var lockedY = null;
+
+// Allocate buffers
+var playerPosBuffer = Memory.alloc(12);
+var newPosBuffer = Memory.alloc(12);
+
+// Helper function to check if key is pressed
+function isKeyPressed(vk) {
+    try {
+        return (GetAsyncKeyState(vk) & 0x8000) !== 0;
+    } catch(e) {
+        return false;
+    }
+}
+
+var moveCount = 0;
+var lastLogTime = Date.now();
+var noClipInterval = null;
+
+// Main loop
+function startNoClipLoop() {
+    if (noClipInterval) return;
+    noClipInterval = setInterval(function() {
         try {
-            if (!args[0] || args[0].isNull()) return;
-            if (!args[1] || args[1].isNull()) return;
+            getAvatarPos(playerPosBuffer);
+            var x = playerPosBuffer.readFloat();
+            var y = playerPosBuffer.add(4).readFloat();
+            var z = playerPosBuffer.add(8).readFloat();
             
-            kinematicSet++;
-            args[1].writeInt(1); // Forçar kinematic = true
-        } catch (e) {
-            // Erro, ignorar
+            var dx = 0, dy = 0, dz = 0;
+            var moved = false;
+            var isMovingHorizontal = false;
+            
+            // Direções fixas (você pode ajustar se precisar)
+            if (isKeyPressed(VK_W)) { dz += speed; moved = true; isMovingHorizontal = true; } // Frente
+            if (isKeyPressed(VK_S)) { dz -= speed; moved = true; isMovingHorizontal = true; } // Trás
+            if (isKeyPressed(VK_D)) { dx += speed; moved = true; isMovingHorizontal = true; } // Direita
+            if (isKeyPressed(VK_A)) { dx -= speed; moved = true; isMovingHorizontal = true; } // Esquerda
+            
+            // Trava a altura quando começa o movimento horizontal
+            if (isMovingHorizontal && lockedY === null) {
+                lockedY = y;
+            }
+            
+            // Libera a trava quando não houver movimento horizontal
+            if (!isMovingHorizontal) {
+                lockedY = null;
+            }
+            
+            // Apenas permite movimento vertical se não houver movimento horizontal
+            if (!isMovingHorizontal) {
+                if (isKeyPressed(VK_SPACE)) { dy += speed; moved = true; }
+                if (isKeyPressed(VK_SHIFT)) { dy -= speed; moved = true; }
+            }
+            
+            if (moved) {
+                var nx = x + dx;
+                var ny;
+                
+                // Usa a altura travada se houver movimento horizontal, senão usa a normal
+                if (isMovingHorizontal) {
+                    ny = lockedY;
+                } else {
+                    ny = y + dy;
+                }
+                
+                var nz = z + dz;
+                
+                newPosBuffer.writeFloat(nx);
+                newPosBuffer.add(4).writeFloat(ny);
+                newPosBuffer.add(8).writeFloat(nz);
+                
+                setAvatarPos(newPosBuffer);
+                
+                moveCount++;
+            }
+        } catch(e) {
+            // Ignore errors
         }
-    }
-});
+    }, 16);
+}
 
-// Hook para set_constraints - forçar todas as restrições (quando freeze enabled)
-Interceptor.attach(Rigidbody_set_constraints, {
-    onEnter: function(args) {
-        // args[0] = Rigidbody pointer
-        // args[1] = constraints (RigidbodyConstraints)
-        
-        if (!freezeEnabled) return;
-        
-        if (!args[1] || args[1].isNull()) return;
-        
-        // RigidbodyConstraints.FreezeAll = 14 (0xE)
-        try {
-            args[1].writeInt(14); // Congelar tudo
-        } catch (e) {
-            // Erro ao escrever, ignorar
-        }
+function stopNoClipLoop() {
+    if (noClipInterval) {
+        clearInterval(noClipInterval);
+        noClipInterval = null;
     }
-});
+}
 
-console.log("[Freeze] Hooks installed - Press F to toggle freeze (starts disabled)");
-console.log("[Freeze] Script loaded");
+function startNoClip() {
+    startNoClipLoop();
+}
+
+function stopNoClip() {
+    stopNoClipLoop();
+}
+
+var noClipEnabled = false;
 
 rpc.exports = {
-    toggleFreeze: function(enabled) {
-        freezeEnabled = enabled;
-        console.log(`[Freeze] Freeze ${enabled ? 'ENABLED' : 'DISABLED'} (API)`);
+    toggleNoClip: function(enabled, speedValue) {
+        if (enabled) {
+            if (speedValue) speed = speedValue;
+            startNoClip();
+            noClipEnabled = true;
+        } else {
+            stopNoClip();
+            noClipEnabled = false;
+        }
+        return true;
+    },
+    setSpeed: function(speedValue) {
+        speed = speedValue;
         return true;
     },
     getStatus: function() {
-        return { enabled: freezeEnabled };
+        return { enabled: noClipEnabled, speed: speed };
     }
 };
