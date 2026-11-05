@@ -17,7 +17,7 @@ var multiHitEnabled = true;
 var hitCount = 20;
 
 // Calculate target address: base + RVA 0x07AEFA60
-var combatFuncAddr = genshinImpact.base.add(0x07AEFA60);
+var combatFuncAddr = genshinImpact.base.add(0x1086f7a0 );
 console.log("[+] Combat function address: " + combatFuncAddr);
 
 // Create a NativeFunction to call the original combat function
