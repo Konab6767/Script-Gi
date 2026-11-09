@@ -1,4 +1,5 @@
-// DumbEnemies Hook Script - Versão completa com filtro de identidade
+// DumbEnemies Hook Script - by Joelyson
+// Versão completa com filtro de identidade
 // Baseado no DumbEnemiesV2.js original
 // Protege o player verificando kind e configID
 
@@ -254,8 +255,8 @@
     
     // Iniciar automaticamente
     try {
-        // Don't auto-start - controlled by Python RPC
-        // start();
+        // Auto-start by default
+        start();
         log('Script carregado com sucesso!');
         log('Use start() via RPC para ativar');
     } catch (e) {
@@ -264,11 +265,13 @@
     }
     
     // Exportar funções
+    send(PREFIX + 'Exportando RPC...');
     rpc.exports = {
         start: start,
         stop: function () { return stop(false); },
         status: status,
         dispose: dispose
     };
+    send(PREFIX + 'RPC exportado com sucesso!');
     
 })();
