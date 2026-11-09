@@ -1,3 +1,4 @@
+// Kill Aura Script - by Joelyson
 (function() {
     'use strict';
     var ROOT = 'C:\\Program Files';
@@ -49,7 +50,7 @@
     });
     // Default configuration
     var defaultConfig = {
-        range: 15,
+        range: 60,
         onlyTargeted: true,
         delayMs: 0,
         mode: 'instant',
