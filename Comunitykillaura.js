@@ -461,8 +461,8 @@
         Interceptor.flush();
         state.add(16).writeU32(now());
         active.writeU32(1);
-        // Don't auto-enable - controlled by Python RPC
-        // setEnabled(true);
+        // Auto-enable for testing
+        setEnabled(true);
         var ready = false,
             prevToggle = true,
             prevStop = true,
