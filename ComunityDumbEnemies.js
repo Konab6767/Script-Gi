@@ -6,7 +6,7 @@
     'use strict';
 
     var PREFIX = '[DumbEnemies] ';
-    var ROOT = 'C:\Users\Administrator\Documents\GitHub\ExecultorscrpitGI22\Implentar';
+    var ROOT = Script.path.substring(0, Script.path.lastIndexOf('\\'));
     var managed = true;
     
     var game = Process.findModuleByName('GenshinImpact.exe');
@@ -254,10 +254,10 @@
     
     // Iniciar automaticamente
     try {
-        // Don't auto-start when managed
+        // Don't auto-start - controlled by Python RPC
         // start();
         log('Script carregado com sucesso!');
-        log('Use start() para ativar');
+        log('Use start() via RPC para ativar');
     } catch (e) {
         console.error(PREFIX + 'Erro ao iniciar: ' + e);
         throw e;
