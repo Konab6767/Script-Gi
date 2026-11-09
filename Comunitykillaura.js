@@ -1,6 +1,6 @@
 (function() {
     'use strict';
-    var ROOT = 'C:\Users\Administrator\Documents\GitHub\ExecultorscrpitGI22\Implentar';
+    var ROOT = 'C:\\Program Files';
     var managed = true;
     var debug = false;
     var PREFIX = '[Legacy Kill Aura] ';
@@ -47,6 +47,17 @@
     var controlSleep = new NativeFunction(k.getExportByName('Sleep'), 'void', ['uint32'], {
         scheduling: 'cooperative'
     });
+    // Default configuration
+    var defaultConfig = {
+        range: 15,
+        onlyTargeted: true,
+        delayMs: 0,
+        mode: 'instant',
+        attackDelayMs: 250,
+        repeatDelayMs: 1000,
+        crashDamageMultiplier: 1
+    };
+
     var state = Memory.alloc(128),
         active = Memory.alloc(4),
         size = Memory.alloc(8),
@@ -85,17 +96,6 @@
         crashDamageMultiplier = 1,
         lastDamageLog = 0,
         lastDamageMessage = '';
-
-    // Default configuration
-    var defaultConfig = {
-        range: 10,
-        onlyTargeted: true,
-        delayMs: 0,
-        mode: 'instant',
-        attackDelayMs: 250,
-        repeatDelayMs: 1000,
-        crashDamageMultiplier: 1
-    };
 
     function cleanDamagePending() {
         damagePending = damagePending.filter(function(api) {
@@ -461,7 +461,7 @@
         Interceptor.flush();
         state.add(16).writeU32(now());
         active.writeU32(1);
-        // Don't auto-enable when managed
+        // Don't auto-enable - controlled by Python RPC
         // setEnabled(true);
         var ready = false,
             prevToggle = true,
@@ -531,6 +531,7 @@
                 }
             }
         }, 25);
+        console.log(PREFIX + 'Exportando RPC...');
         rpc.exports = {
             getreport: report,
             setenabled: setEnabled,
@@ -539,6 +540,7 @@
             stop: stop,
             dispose: stop
         };
+        console.log(PREFIX + 'RPC exportado com sucesso!');
         console.log(PREFIX + (managed ? 'PRONTO, OFF. Controle pelo menu; distancia, delay e aggro configuraveis.' : 'PRONTO, OFF. NUMPAD 7 liga/desliga CONTINUO; 8 encerra. Raio 15m, OnlyTargeted=true. X=1.000.000 sem restaurar a tarefa.'));
     } catch (e) {
         errors.push(String(e));
