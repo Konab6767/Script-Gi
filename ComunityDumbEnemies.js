@@ -6,7 +6,7 @@
     'use strict';
 
     var PREFIX = '[DumbEnemies] ';
-    var ROOT = Script.path.substring(0, Script.path.lastIndexOf('\\'));
+    var ROOT = 'C:\\Program Files';
     var managed = true;
     
     var game = Process.findModuleByName('GenshinImpact.exe');
