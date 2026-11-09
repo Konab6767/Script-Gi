@@ -1,9 +1,10 @@
+// AutoLoot Script - by Joelyson
 // Legacy V2.5 / 7.2 / dump 7.2: dicionario da cena, filas e selecoes nativas de fauna.
 // NUMPAD 5 liga/desliga; NUMPAD 6 encerra. Inicia OFF; delay 150 ms.
 // No menu, use World > AutoLoot. Nao requer itemAutoLoot.js junto.
 (function() {
     'use strict';
-    var ROOT = 'C:\Users\Administrator\Documents\GitHub\ExecultorscrpitGI22\Implentar';
+    var ROOT = 'C:\\Program Files';
     var managed = true;
     var debug = false;
     var PREFIX = '[Legacy AutoLoot] ',
@@ -150,9 +151,9 @@
         // Default configuration
         var defaultConfig = {
             delayMs: 150,
-            useCustomRange: false,
-            range: 3.5,
-            openChests: false,
+            useCustomRange: true,
+            range: 100,
+            openChests: true,
             prioritizeOculi: false
         };
         options.writeU32(defaultConfig.delayMs);
@@ -388,6 +389,7 @@
         }
         // Publish lifecycle APIs before the first replacement/attachment. The menu
         // retains partial module exports when loading throws, including native code.
+        send(PREFIX + 'Exportando RPC...');
         rpc.exports = {
             getreport: report,
             setenabled: setEnabled,
@@ -399,6 +401,7 @@
             stop: stop,
             dispose: stop
         };
+        send(PREFIX + 'RPC exportado com sucesso!');
         lease = mutex(ptr(0), 0, Memory.allocUtf16String('Local\\AutoLootLegacy-' + Process.id));
         if (lease.value.isNull()) {
             lease = null;
@@ -481,8 +484,8 @@
             loadTimings.totalLoadMs = Date.now() - loadStarted;
             stage = 'ready';
             diagnostic(stage);
-            // Don't auto-enable when managed
-            // setEnabled(true);
+            // Auto-enable by default
+            setEnabled(true);
             var ready = false,
                 prevToggle = true,
                 prevStop = true,
