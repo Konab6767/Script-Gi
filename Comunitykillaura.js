@@ -531,7 +531,7 @@
                 }
             }
         }, 25);
-        console.log(PREFIX + 'Exportando RPC...');
+        send(PREFIX + 'Exportando RPC...');
         rpc.exports = {
             getreport: report,
             setenabled: setEnabled,
@@ -540,7 +540,7 @@
             stop: stop,
             dispose: stop
         };
-        console.log(PREFIX + 'RPC exportado com sucesso!');
+        send(PREFIX + 'RPC exportado com sucesso!');
         console.log(PREFIX + (managed ? 'PRONTO, OFF. Controle pelo menu; distancia, delay e aggro configuraveis.' : 'PRONTO, OFF. NUMPAD 7 liga/desliga CONTINUO; 8 encerra. Raio 15m, OnlyTargeted=true. X=1.000.000 sem restaurar a tarefa.'));
     } catch (e) {
         errors.push(String(e));
